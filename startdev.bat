@@ -1,0 +1,2 @@
+ipconfig
+quasar dev
