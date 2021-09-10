@@ -1,1 +1,24 @@
 // app global css in SCSS form
+
+@import url('https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap');
+
+.text-grand-hotel {
+  font-family: 'Grand Hotel', "Roboto", "Helvetica Neue", Helvetica, sans-serif;
+}
+
+.small-scree-only{
+  @media (max-width: $breakpoint-xs-max) {
+    display: block;
+  }
+  @media (min-width: $breakpoint-sm-min) {
+    display: none;
+  }
+}
+.large-scree-only{
+  @media (max-width: $breakpoint-xs-max) {
+    display: none;
+  }
+  @media (min-width: $breakpoint-sm-min) {
+    display: block;
+  }
+}
