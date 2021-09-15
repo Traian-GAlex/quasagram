@@ -1,8 +1,8 @@
 <template>
   <q-page class="constrain-more q-pa-md">
-    <div class="camera-frame q-pa-md">
+    <div class="camera-frame q-pa-md" v-show="hasCameraSupport || imageCaptured">
       <video
-        v-show="!imageCaptured"
+        v-show="!imageCaptured "
         ref="video"
         class="full-width"
         autoplay
@@ -16,6 +16,7 @@
     </div>
     <div class="text-center q-pa-md">
       <q-btn round
+             v-if="hasCameraSupport"
              @click="captureImage"
              v-show="!imageCaptured"
              size="lg"
@@ -27,6 +28,19 @@
              size="lg"
              color="red-5"
              icon="eva-trash"/>
+
+      <q-file outlined
+              v-if="!hasCameraSupport" dense
+              v-show="!imageCaptured"
+              label="Choose an image..."
+              v-model="uploadedImage"
+              accept="image/*"
+              @input="captureImageFallback">
+        <template v-slot:prepend>
+          <q-icon name="eva-attach-outline"/>
+        </template>
+      </q-file>
+
       <div class="row justify-center q-pa-md">
         <q-input class="col col-sm-10" v-model="post.caption" label="Caption" dense/>
       </div>
@@ -60,12 +74,14 @@ export default {
         photo: null,
         date: Date.now(),
       },
+      hasCameraSupport: true,
+      uploadedImage: [],
       imageCaptured: false,
     }
   },
 
   methods: {
-    resetPost(){
+    resetPost() {
       this.post = {
         id: uid(),
         caption: '',
@@ -73,43 +89,65 @@ export default {
         photo: null,
         date: Date.now(),
       };
+      this.uploadedImage = [];
     },
     initCamera() {
       this.imageCaptured = false;
-      try {
-        // you need secure connection in production for this
-        // use localhost for development
-        navigator.mediaDevices.getUserMedia({video: true})
-          .then(stream => {
-            this.$refs.video.srcObject = stream;
-          })
-          .catch(error => {
-            console.log(error);
-          })
 
-      } catch (e) {
-        alert(e);
-      }
+      // you need secure connection in production for this
+      // use localhost for development
+      navigator.mediaDevices.getUserMedia({video: true})
+        .then(stream => {
+          this.$refs.video.srcObject = stream;
+        })
+        .catch(error => {
+          console.log(error);
+          this.hasCameraSupport = false;
+        })
 
     },
     closeCamera() {
-      console.log('closeCamera');
+      this.$refs.video.srcObject.getVideoTracks().forEach(track => {
+        track.stop()
+      })
     },
-    captureImage(){
+    captureImage() {
       let video = this.$refs.video;
       let canvas = this.$refs.canvas;
-      canvas.width= video.getBoundingClientRect().width;
-      canvas.height= video.getBoundingClientRect().height;
+      canvas.width = video.getBoundingClientRect().width;
+      canvas.height = video.getBoundingClientRect().height;
       let context = canvas.getContext('2d');
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       this.post.photo = this.dataURItoBlob(canvas.toDataURL());
       this.post.id = uid();
       this.post.date = Date.now();
       this.imageCaptured = true;
-     },
-    resetCanvas(){
+      this.closeCamera();
+    },
+    resetCanvas() {
       this.imageCaptured = false;
       this.resetPost();
+      this.initCamera();
+
+    },
+    captureImageFallback(file) {
+      console.log("file ", file);
+
+      let canvas = this.$refs.canvas;
+      let context = canvas.getContext("2d");
+
+      let reader = new FileReader();
+      reader.onload = event => {
+        let img = new Image();
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          context.drawImage(img, 0, 0);
+          this.imageCaptured = true;
+        }
+        img.src = event.target.result;
+      }
+      reader.readAsDataURL(file);
     },
     dataURItoBlob(dataURI) {
       // convert base64 to raw binary data held in a string
@@ -132,15 +170,18 @@ export default {
 
       // write the ArrayBuffer to a blob, and you're done
       // let blob = new Blob([ab], {type: mimeString});
-      return new Blob([ab], {type: mimeString});;
+      return new Blob([ab], {type: mimeString});
+      ;
 
     }
   },
   mounted() {
     this.initCamera();
   },
-  destroyed() {
-    this.closeCamera();
+  beforeDestroy() {
+    if (this.hasCameraSupport) {
+      this.closeCamera();
+    }
   }
 }
 </script>
