@@ -45,9 +45,12 @@
         <q-input class="col col-sm-10" v-model="post.caption" label="Caption" dense/>
       </div>
       <div class="row justify-center q-pa-md">
-        <q-input class="col  col-sm-10" v-model="post.location" label="Location" dense>
+        <q-input :loading="locationLoading" class="col  col-sm-10" v-model="post.location" label="Location" dense>
           <template v-slot:append>
-            <q-btn round dense flat icon="eva-navigation-2-outline"/>
+            <q-btn
+              v-if="!locationLoading && geolocationSupported"
+              round dense flat icon="eva-navigation-2-outline"
+              @click="getLocation"/>
           </template>
         </q-input>
       </div>
@@ -77,9 +80,14 @@ export default {
       hasCameraSupport: true,
       uploadedImage: [],
       imageCaptured: false,
+      locationLoading: false
     }
   },
-
+  computed: {
+    geolocationSupported() {
+      return ('geolocation' in navigator);
+    }
+  },
   methods: {
     resetPost() {
       this.post = {
@@ -171,8 +179,37 @@ export default {
       // write the ArrayBuffer to a blob, and you're done
       // let blob = new Blob([ab], {type: mimeString});
       return new Blob([ab], {type: mimeString});
-      ;
+    },
+    getLocation() {
+      this.locationLoading = true;
+      navigator.geolocation.getCurrentPosition(position => {
+        this.getCityAndCountry(position);
+      }, error => this.locationError(), {timeout: 7000})
+    },
+    getCityAndCountry(position) {
+      // https://geocode.xyz/41.3189957000,2.0746469000?json=1
+      let apiUrl = `https://geocode.xyz/${position.coords.latitude},${position.coords.longitude}?geoit=json`
 
+      this.$axios.get(apiUrl).then(result => {
+        this.locationSuccess(result)
+      }).catch(err => {
+        console.log(err);
+        this.locationError()
+      })
+    },
+    locationSuccess(result) {
+      this.post.location = result.data.city
+      if (result.data.country) {
+        this.post.location += `, ${result.data.country}`
+      }
+      this.locationLoading = false
+    },
+    locationError() {
+      this.$q.dialog({
+        title: 'Error',
+        message: 'Could not find your location.'
+      })
+      this.locationLoading = false
     }
   },
   mounted() {
