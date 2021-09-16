@@ -49,6 +49,7 @@
           <template v-slot:append>
             <q-btn
               v-if="!locationLoading && geolocationSupported"
+              :disable="disableLocationButton"
               round dense flat icon="eva-navigation-2-outline"
               @click="getLocation"/>
           </template>
@@ -80,7 +81,10 @@ export default {
       hasCameraSupport: true,
       uploadedImage: [],
       imageCaptured: false,
-      locationLoading: false
+      locationLoading: false,
+
+      disableLocationButton: false,
+      disableLocationButtonHandler: null,
     }
   },
   computed: {
@@ -131,6 +135,7 @@ export default {
       this.post.date = Date.now();
       this.imageCaptured = true;
       this.closeCamera();
+      this.getLocation();
     },
     resetCanvas() {
       this.imageCaptured = false;
@@ -152,6 +157,7 @@ export default {
           canvas.height = img.height;
           context.drawImage(img, 0, 0);
           this.imageCaptured = true;
+          this.getLocation();
         }
         img.src = event.target.result;
       }
@@ -202,19 +208,32 @@ export default {
       if (result.data.country) {
         this.post.location += `, ${result.data.country}`
       }
+      console.clear();
       this.locationLoading = false
+      this.doDisableLocationButton();
     },
     locationError() {
+      this.locationLoading = false
+      this.doDisableLocationButton();
       this.$q.dialog({
         title: 'Error',
         message: 'Could not find your location.'
       })
-      this.locationLoading = false
-    }
+
+    },
+    doDisableLocationButton() {
+      this.disableLocationButton = true;
+      this.disableLocationButtonHandler = setTimeout(() => {
+        this.disableLocationButton = false;
+        clearInterval(this.disableLocationButtonHandler);
+      }, 1500)
+
+    },
   },
   mounted() {
     this.initCamera();
-  },
+  }
+  ,
   beforeDestroy() {
     if (this.hasCameraSupport) {
       this.closeCamera();
